@@ -4,12 +4,14 @@ import (
 	"bytes"
 
 	kb "github.com/lsds/KungFu/srcs/go/kungfu/base"
+	"github.com/lsds/KungFu/srcs/go/log"
 	"github.com/lsds/KungFu/srcs/go/plan"
+	"github.com/lsds/KungFu/srcs/go/plan/graph"
 )
 
-type partitionStrategy func(plan.PeerList) []strategy
-
 type strategyList []strategy
+
+type partitionStrategy func(plan.PeerList) strategyList
 
 func (sl strategyList) choose(i int) strategy {
 	return sl[i%len(sl)]
@@ -34,7 +36,7 @@ var partitionStrategies = map[kb.Strategy]partitionStrategy{
 	kb.MultiBinaryTreeStar: createMultiBinaryTreeStarStrategies,
 }
 
-func simpleSingleGraphStrategy(bcastGraph *plan.Graph) []strategy {
+func simpleSingleGraphStrategy(bcastGraph *graph.Graph) strategyList {
 	return []strategy{
 		{
 			reduceGraph: plan.GenDefaultReduceGraph(bcastGraph),
@@ -43,62 +45,62 @@ func simpleSingleGraphStrategy(bcastGraph *plan.Graph) []strategy {
 	}
 }
 
-func createStarStrategies(peers plan.PeerList) []strategy {
+func createStarStrategies(peers plan.PeerList) strategyList {
 	bcastGraph := plan.GenStarBcastGraph(len(peers), defaultRoot)
 	return simpleSingleGraphStrategy(bcastGraph)
 }
 
-func createTreeStrategies(peers plan.PeerList) []strategy {
+func createTreeStrategies(peers plan.PeerList) strategyList {
 	bcastGraph := plan.GenTree(peers)
 	return simpleSingleGraphStrategy(bcastGraph)
 }
 
-func createBinaryTreeStrategies(peers plan.PeerList) []strategy {
+func createBinaryTreeStrategies(peers plan.PeerList) strategyList {
 	bcastGraph := plan.GenBinaryTree(len(peers))
 	return simpleSingleGraphStrategy(bcastGraph)
 }
 
-func createBinaryTreeStarStrategies(peers plan.PeerList) []strategy {
+func createBinaryTreeStarStrategies(peers plan.PeerList) strategyList {
 	bcastGraph := plan.GenBinaryTreeStar(peers)
 	return simpleSingleGraphStrategy(bcastGraph)
 }
 
-func createMultiBinaryTreeStarStrategies(peers plan.PeerList) []strategy {
-	var ss []strategy
+func createMultiBinaryTreeStarStrategies(peers plan.PeerList) strategyList {
+	var sl strategyList
 	for _, bcastGraph := range plan.GenMultiBinaryTreeStar(peers) {
-		ss = append(ss, strategy{
+		sl = append(sl, strategy{
 			reduceGraph: plan.GenDefaultReduceGraph(bcastGraph),
 			bcastGraph:  bcastGraph,
 		})
 	}
-	return ss
+	return sl
 }
 
-func createCliqueStrategies(peers plan.PeerList) []strategy {
+func createCliqueStrategies(peers plan.PeerList) strategyList {
 	k := len(peers)
-	var ss []strategy
+	var sl strategyList
 	for r := 0; r < k; r++ {
 		bcastGraph := plan.GenStarBcastGraph(k, r)
 		reduceGraph := plan.GenDefaultReduceGraph(bcastGraph)
-		ss = append(ss, strategy{
+		sl = append(sl, strategy{
 			reduceGraph: reduceGraph,
 			bcastGraph:  bcastGraph,
 		})
 	}
-	return ss
+	return sl
 }
 
-func createRingStrategies(peers plan.PeerList) []strategy {
+func createRingStrategies(peers plan.PeerList) strategyList {
 	k := len(peers)
-	var ss []strategy
+	var sl strategyList
 	for r := 0; r < k; r++ {
 		reduceGraph, bcastGraph := plan.GenCircularGraphPair(k, r)
-		ss = append(ss, strategy{
+		sl = append(sl, strategy{
 			reduceGraph: reduceGraph,
 			bcastGraph:  bcastGraph,
 		})
 	}
-	return ss
+	return sl
 }
 
 func autoSelect(peers plan.PeerList) kb.Strategy {
@@ -110,4 +112,15 @@ func autoSelect(peers plan.PeerList) kb.Strategy {
 		return kb.Star
 	}
 	return kb.BinaryTreeStar
+}
+
+func genPeerStrategyList(peers plan.PeerList, strategy kb.Strategy) strategyList {
+	return partitionStrategies[strategy](peers)
+}
+
+func genRootStrategyList(peers plan.PeerList, strategy kb.Strategy) strategyList {
+	// masters, parents := peers.PartitionByHost()
+	var sl strategyList
+	log.Errorf("TODO: genRootStrategyList")
+	return sl
 }

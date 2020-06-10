@@ -36,5 +36,5 @@ func GoKungfuProposeNewSize(newSize int) int {
 func GoKungfuSetTree(pTree unsafe.Pointer) int {
 	sess := defaultPeer.CurrentSession()
 	tree := toVector(pTree, sess.Size(), C.KungFu_INT32) // TODO: ensure pTree has size np in C++
-	return callOP("Barrier", func() error { return sess.SimpleSetStrategy(tree.AsI32()) }, nil)
+	return callOP("SimpleSetPeerStrategy", func() error { return sess.SimpleSetPeerStrategy(tree.AsI32()) }, nil)
 }

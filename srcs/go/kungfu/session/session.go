@@ -7,6 +7,7 @@ import (
 	"github.com/lsds/KungFu/srcs/go/kungfu/execution"
 	"github.com/lsds/KungFu/srcs/go/log"
 	"github.com/lsds/KungFu/srcs/go/plan"
+	"github.com/lsds/KungFu/srcs/go/plan/graph"
 	"github.com/lsds/KungFu/srcs/go/rchannel/client"
 	"github.com/lsds/KungFu/srcs/go/rchannel/connection"
 	"github.com/lsds/KungFu/srcs/go/rchannel/handler"
@@ -18,15 +19,15 @@ const defaultRoot = 0
 
 // A strategy is a pair of graphs for collective communication
 type strategy struct {
-	reduceGraph *plan.Graph
-	bcastGraph  *plan.Graph
+	reduceGraph *graph.Graph
+	bcastGraph  *graph.Graph
 }
 
 // Session contains the immutable peer list for a given period of logical duration
 type Session struct {
 	sync.Mutex
 
-	strategies        strategyList
+	peerStrategies    strategyList
 	rootStrategies    strategyList
 	self              plan.PeerID
 	peers             plan.PeerList
@@ -51,8 +52,8 @@ func New(strategy kb.Strategy, self plan.PeerID, pl plan.PeerList, client *clien
 		strategy = autoSelect(pl)
 	}
 	sess := &Session{
-		strategies:        partitionStrategies[strategy](pl),
-		rootStrategies:    partitionStrategies[strategy](pl),
+		peerStrategies:    genPeerStrategyList(pl, strategy),
+		rootStrategies:    genRootStrategyList(pl, strategy),
 		self:              self,
 		peers:             pl,
 		rank:              rank,
@@ -101,7 +102,7 @@ func (sess *Session) barrier() error {
 		OP:      kb.SUM,
 		Name:    "kungfu::barrier", // TODO: use tag
 	}
-	return sess.runStrategies(w, plan.EvenPartition, sess.strategies)
+	return sess.runStrategies(w, plan.EvenPartition, sess.peerStrategies)
 }
 
 func (sess *Session) Consensus(w kb.Workspace) error {
@@ -147,12 +148,12 @@ func (sess *Session) BytesConsensus(bs []byte, name string) (bool, error) {
 }
 
 func (sess *Session) Reduce(w kb.Workspace) error {
-	strategy := sess.strategies[0] // Assuming len(sess.strategies) > 0
+	strategy := sess.peerStrategies[0] // Assuming len(sess.strategies) > 0
 	return sess.runGraphs(w, strategy.reduceGraph)
 }
 
 func (sess *Session) Broadcast(w kb.Workspace) error {
-	strategy := sess.strategies[0] // Assuming len(sess.strategies) > 0
+	strategy := sess.peerStrategies[0] // Assuming len(sess.strategies) > 0
 	return sess.runGraphs(w, strategy.bcastGraph)
 }
 
@@ -196,7 +197,7 @@ func (sess *Session) runGather(w kb.Workspace) error {
 	return nil // FIXME: handle errors
 }
 
-func (sess *Session) runGraphs(w kb.Workspace, graphs ...*plan.Graph) error {
+func (sess *Session) runGraphs(w kb.Workspace, graphs ...*graph.Graph) error {
 	if len(sess.peers) == 1 {
 		w.RecvBuf.CopyFrom(w.SendBuf)
 		return nil
