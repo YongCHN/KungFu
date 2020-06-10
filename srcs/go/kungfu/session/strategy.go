@@ -7,6 +7,7 @@ import (
 	"github.com/lsds/KungFu/srcs/go/log"
 	"github.com/lsds/KungFu/srcs/go/plan"
 	"github.com/lsds/KungFu/srcs/go/plan/graph"
+	"github.com/lsds/KungFu/srcs/go/plan/subgraph"
 )
 
 type strategyList []strategy
@@ -105,13 +106,23 @@ func autoSelect(peers plan.PeerList) kb.Strategy {
 	return kb.BinaryTreeStar
 }
 
-func genPeerStrategyList(peers plan.PeerList, strategy kb.Strategy) strategyList {
-	return partitionStrategies[strategy](peers)
+func genPeerStrategyList(peers plan.PeerList, strategyName kb.Strategy) strategyList {
+	return partitionStrategies[strategyName](peers)
 }
 
-func genRootStrategyList(peers plan.PeerList, strategy kb.Strategy) strategyList {
-	// masters, parents := peers.PartitionByHost()
+func genRootStrategyList(peers plan.PeerList, strategyName kb.Strategy) strategyList {
+	if strategyName != kb.Ring {
+		log.Warnf("TODO supoort %s is supoorted for genRootStrategyList. using %s", strategyName, kb.Ring)
+	}
+	n := len(peers)
+	masters, _ := peers.PartitionByHost()
 	var sl strategyList
-	log.Errorf("TODO: genRootStrategyList")
+	for r := range masters {
+		reduceGraph, bcastGraph := subgraph.GenCircularGraphPair(n, masters, r)
+		sl = append(sl, strategy{
+			reduceGraph: reduceGraph,
+			bcastGraph:  bcastGraph,
+		})
+	}
 	return sl
 }
