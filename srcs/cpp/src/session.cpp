@@ -62,6 +62,24 @@ int Peer::AllReduce(const void *sendbuf, void *recvbuf, int count,
                              new CallbackWrapper(done));
 }
 
+int Peer::LocalRootAllReduce(const void *sendbuf, void *recvbuf, int count,
+                             KungFu_Datatype dtype, KungFu_Op op,
+                             const char *name)
+{
+    return GoKungfuLocalRootAllReduce(const_cast<void *>(sendbuf), recvbuf,
+                                      GoInt(count), dtype, op,
+                                      const_cast<char *>(name), nullptr);
+}
+
+int Peer::LocalRootAllReduce(const void *sendbuf, void *recvbuf, int count,
+                             KungFu_Datatype dtype, KungFu_Op op,
+                             const char *name, const DoneCallback &done)
+{
+    return GoKungfuLocalRootAllReduce(
+        const_cast<void *>(sendbuf), recvbuf, GoInt(count), dtype, op,
+        const_cast<char *>(name), new CallbackWrapper(done));
+}
+
 int Peer::MonitoredAllReduce(const void *sendbuf, void *recvbuf, int count,
                              KungFu_Datatype dtype, KungFu_Op op,
                              const int32_t *tree, const char *name,

@@ -76,6 +76,13 @@ class Peer
                   KungFu_Datatype dtype, KungFu_Op op, const char *name,
                   const DoneCallback &done);
 
+    int LocalRootAllReduce(const void *sendbuf, void *recvbuf, int count,
+                           KungFu_Datatype dtype, KungFu_Op op,
+                           const char *name);
+    int LocalRootAllReduce(const void *sendbuf, void *recvbuf, int count,
+                           KungFu_Datatype dtype, KungFu_Op op,
+                           const char *name, const DoneCallback &done);
+
     int MonitoredAllReduce(const void *sendbuf, void *recvbuf, int count,
                            KungFu_Datatype dtype, KungFu_Op op,
                            const int32_t *tree, const char *name,

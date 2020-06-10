@@ -16,17 +16,18 @@ import (
 
 const defaultRoot = 0
 
-// A strategy is a pair of dataflow graphs
+// A strategy is a pair of graphs for collective communication
 type strategy struct {
 	reduceGraph *plan.Graph
 	bcastGraph  *plan.Graph
 }
 
-// Session contains the immutable topology and strategies for a given period of logical duration
+// Session contains the immutable peer list for a given period of logical duration
 type Session struct {
 	sync.Mutex
 
 	strategies        strategyList
+	rootStrategies    strategyList
 	self              plan.PeerID
 	peers             plan.PeerList
 	rank              int
@@ -51,6 +52,7 @@ func New(strategy kb.Strategy, self plan.PeerID, pl plan.PeerList, client *clien
 	}
 	sess := &Session{
 		strategies:        partitionStrategies[strategy](pl),
+		rootStrategies:    partitionStrategies[strategy](pl),
 		self:              self,
 		peers:             pl,
 		rank:              rank,

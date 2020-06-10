@@ -44,6 +44,19 @@ func GoKungfuAllReduce(sendBuf, recvBuf unsafe.Pointer, count int, dtype C.KungF
 	return callCollectiveOP("AllReduce", name, sess.AllReduce, w, done)
 }
 
+//export GoKungfuLocalRootAllReduce
+func GoKungfuLocalRootAllReduce(sendBuf, recvBuf unsafe.Pointer, count int, dtype C.KungFu_Datatype, op C.KungFu_Op, pName *C.char, done *C.callback_t) int {
+	name := C.GoString(pName)
+	w := kb.Workspace{
+		SendBuf: toVector(sendBuf, count, dtype),
+		RecvBuf: toVector(recvBuf, count, dtype),
+		OP:      kb.OP(op),
+		Name:    name,
+	}
+	sess := defaultPeer.CurrentSession()
+	return callCollectiveOP("LocalRootAllReduce", name, sess.LocalRootAllReduce, w, done)
+}
+
 //export GoKungfuMonitoredAllReduce
 func GoKungfuMonitoredAllReduce(sendBuf, recvBuf unsafe.Pointer, count int, dtype C.KungFu_Datatype, op C.KungFu_Op, pTree unsafe.Pointer /* TODO: return monitoring data */, pName *C.char, done *C.callback_t) int {
 	name := C.GoString(pName)

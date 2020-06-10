@@ -18,3 +18,8 @@ func (sess *Session) AllReduceWith(forest []int32, w base.Workspace) error {
 	s0 := strategy{reduceGraph: rg, bcastGraph: bg}
 	return sess.runStrategies(w, plan.EvenPartition, []strategy{s0})
 }
+
+// LocalRootAllReduce performs allreduce across all local roots.
+func (sess *Session) LocalRootAllReduce(w base.Workspace) error {
+	return sess.runStrategies(w, plan.EvenPartition, sess.rootStrategies)
+}
