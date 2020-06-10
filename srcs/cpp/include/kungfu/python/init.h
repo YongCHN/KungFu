@@ -67,6 +67,13 @@ class nccl_controller
                            void *recvbuf, int count, KungFu_Datatype dtype,
                            KungFu_Op op, const char *name, DoneCallback done);
 
+    int Reduce(const void *sendbuf, void *recvbuf, int count,
+               KungFu_Datatype dtype, KungFu_Op op, const char *name,
+               DoneCallback done);
+
+    int Broadcast(const void *sendbuf, void *recvbuf, int count,
+                  KungFu_Datatype dtype, const char *name, DoneCallback done);
+
     int AllReduce(const void *sendbuf, void *recvbuf, int count,
                   KungFu_Datatype dtype, KungFu_Op op, const char *name,
                   DoneCallback done);

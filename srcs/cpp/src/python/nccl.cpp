@@ -45,6 +45,24 @@ int nccl_controller::ScheduledAllReduce(DoneCallback ready, const void *sendbuf,
     return 0;
 }
 
+int nccl_controller::Reduce(const void *sendbuf, void *recvbuf, int count,
+                            KungFu_Datatype dtype, KungFu_Op op,
+                            const char *name, DoneCallback done)
+{
+    _gpu_collective->reduce(sendbuf, recvbuf, count, dtype);
+    done();
+    return 0;
+}
+
+int nccl_controller::Broadcast(const void *sendbuf, void *recvbuf, int count,
+                               KungFu_Datatype dtype, const char *name,
+                               DoneCallback done)
+{
+    _gpu_collective->broadcast(sendbuf, recvbuf, count, dtype);
+    done();
+    return 0;
+}
+
 int nccl_controller::AllReduce(const void *sendbuf, void *recvbuf, int count,
                                KungFu_Datatype dtype, KungFu_Op op,
                                const char *name, DoneCallback done)
