@@ -193,8 +193,17 @@ func (sess *Session) runGather(w kb.Workspace) error {
 	return nil // FIXME: handle errors
 }
 
+func isIsolated(rank int, graphs ...*graph.Graph) bool {
+	for _, g := range graphs {
+		if !g.IsIsolated(rank) {
+			return false
+		}
+	}
+	return true
+}
+
 func (sess *Session) runGraphs(w kb.Workspace, graphs ...*graph.Graph) error {
-	if len(sess.peers) == 1 {
+	if isIsolated(sess.rank, graphs...) {
 		w.RecvBuf.CopyFrom(w.SendBuf)
 		return nil
 	}

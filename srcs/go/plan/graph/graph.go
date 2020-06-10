@@ -22,6 +22,10 @@ type Node struct {
 	Nexts    Vertices
 }
 
+func (n *Node) isIsolated() bool {
+	return len(n.Prevs) == 0 && len(n.Nexts) == 0
+}
+
 // Graph represents a graph of integers numbered from 0 to n - 1.
 type Graph struct {
 	Nodes []Node
@@ -69,6 +73,10 @@ func (g *Graph) AddEdge(i, j int) {
 
 func (g Graph) IsSelfLoop(i int) bool {
 	return g.Nodes[i].SelfLoop
+}
+
+func (g Graph) IsIsolated(i int) bool {
+	return g.Nodes[i].isIsolated()
 }
 
 func (g Graph) Prevs(i int) []int {
