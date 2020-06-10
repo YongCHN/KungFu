@@ -102,19 +102,20 @@ class AllReduce : public AsyncOpKernel
 
 REGISTER_KUNGFU_KERNEL_BUILDER(AllReduce, DEVICE_CPU);
 
-REGISTER_KUNGFU_OP(LocalRootAllReduce)
+// RootAllReduce performs allreduce among local masters
+REGISTER_KUNGFU_OP(RootAllReduce)
     .Attr("T: {int32, int64, float16, float32, float64}")
     .Attr("op: string")
     .Input("input: T")
     .Output("output: T")
     .SetShapeFn(shape_inference::UnchangedShape);
 
-class LocalRootAllReduce : public AsyncOpKernel
+class RootAllReduce : public AsyncOpKernel
 {
     KungFu_Op op_;
 
   public:
-    explicit LocalRootAllReduce(OpKernelConstruction *context)
+    explicit RootAllReduce(OpKernelConstruction *context)
         : AsyncOpKernel(context)
     {
         std::string op;
@@ -138,7 +139,7 @@ class LocalRootAllReduce : public AsyncOpKernel
     }
 };
 
-REGISTER_KUNGFU_KERNEL_BUILDER(LocalRootAllReduce, DEVICE_CPU);
+REGISTER_KUNGFU_KERNEL_BUILDER(RootAllReduce, DEVICE_CPU);
 
 REGISTER_KUNGFU_OP(MonitoredAllReduce)
     .Attr("T: {int32, int64, float16, float32, float64}")

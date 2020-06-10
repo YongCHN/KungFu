@@ -19,7 +19,7 @@ class StartNcclScheduler : public OpKernel
     explicit StartNcclScheduler(OpKernelConstruction *context)
         : OpKernel(context), counter_(0)
     {
-        kungfu::_nccl_controller->InitOnce();
+        kungfu::_local_nccl_controller->InitOnce();
     }
 
     void Compute(OpKernelContext *context) override

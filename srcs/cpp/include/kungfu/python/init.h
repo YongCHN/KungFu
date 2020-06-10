@@ -69,5 +69,6 @@ class nccl_controller
                   DoneCallback done);
 };
 
-extern std::unique_ptr<nccl_controller> _nccl_controller;
+extern std::unique_ptr<nccl_controller> _global_nccl_controller;
+extern std::unique_ptr<nccl_controller> _local_nccl_controller;
 }  // namespace kungfu

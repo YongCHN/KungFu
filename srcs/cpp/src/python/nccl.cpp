@@ -3,18 +3,19 @@
 
 void kungfu_python_init_nccl()
 {
-    kungfu::_nccl_controller.reset(new kungfu::nccl_controller);
+    kungfu::_local_nccl_controller.reset(new kungfu::nccl_controller);
 }
 
 void kungfu_python_finialize_nccl()
 {
     kungfu::_nccl_order_group.reset(nullptr);
-    kungfu::_nccl_controller.reset(nullptr);
+    kungfu::_local_nccl_controller.reset(nullptr);
 }
 
 namespace kungfu
 {
-std::unique_ptr<nccl_controller> _nccl_controller;
+std::unique_ptr<nccl_controller> _global_nccl_controller;
+std::unique_ptr<nccl_controller> _local_nccl_controller;
 
 void nccl_controller::InitOnce()
 {
