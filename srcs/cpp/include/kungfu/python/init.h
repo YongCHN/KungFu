@@ -55,9 +55,12 @@ extern std::unique_ptr<order_group> _nccl_order_group;
 
 class nccl_controller
 {
+    bool _global;
     std::unique_ptr<gpu_collective> _gpu_collective;
 
   public:
+    nccl_controller(bool global);
+
     void InitOnce();
 
     int ScheduledAllReduce(DoneCallback ready, const void *sendbuf,

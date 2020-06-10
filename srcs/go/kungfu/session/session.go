@@ -27,8 +27,9 @@ type strategy struct {
 type Session struct {
 	sync.Mutex
 
-	peerStrategies    strategyList
-	rootStrategies    strategyList
+	localStrategies   strategyList
+	globalStrategies  strategyList
+	crossStrategies   strategyList
 	self              plan.PeerID
 	peers             plan.PeerList
 	rank              int
@@ -52,8 +53,9 @@ func New(strategy kb.Strategy, self plan.PeerID, pl plan.PeerList, client *clien
 		strategy = autoSelect(pl)
 	}
 	sess := &Session{
-		peerStrategies:    genPeerStrategyList(pl, strategy),
-		rootStrategies:    genRootStrategyList(pl, strategy),
+		localStrategies:   genLocalStrategyList(pl),
+		globalStrategies:  genGlobalStrategyList(pl, strategy),
+		crossStrategies:   genCrossStrategyList(pl, strategy),
 		self:              self,
 		peers:             pl,
 		rank:              rank,
@@ -102,7 +104,7 @@ func (sess *Session) barrier() error {
 		OP:      kb.SUM,
 		Name:    "kungfu::barrier", // TODO: use tag
 	}
-	return sess.runStrategies(w, plan.EvenPartition, sess.peerStrategies)
+	return sess.runStrategies(w, plan.EvenPartition, sess.globalStrategies)
 }
 
 func (sess *Session) Consensus(w kb.Workspace) error {
@@ -148,18 +150,28 @@ func (sess *Session) BytesConsensus(bs []byte, name string) (bool, error) {
 }
 
 func (sess *Session) Reduce(w kb.Workspace) error {
-	strategy := sess.peerStrategies[0] // Assuming len(sess.peerStrategies) > 0
+	strategy := sess.globalStrategies[0] // Assuming len(sess.globalStrategies) > 0
 	return sess.runGraphs(w, strategy.reduceGraph)
 }
 
 func (sess *Session) Broadcast(w kb.Workspace) error {
-	strategy := sess.peerStrategies[0] // Assuming len(sess.peerStrategies) > 0
+	strategy := sess.globalStrategies[0] // Assuming len(sess.globalStrategies) > 0
 	return sess.runGraphs(w, strategy.bcastGraph)
 }
 
 func (sess *Session) Gather(w kb.Workspace) error {
 	// TODO: validate input
 	return sess.runGather(w)
+}
+
+func (sess *Session) LocalReduce(w kb.Workspace) error {
+	strategy := sess.localStrategies[0] // len(sess.localStrategies) == 1
+	return sess.runGraphs(w, strategy.reduceGraph)
+}
+
+func (sess *Session) LocalBroadcast(w kb.Workspace) error {
+	strategy := sess.localStrategies[0] // len(sess.localStrategies) == 1
+	return sess.runGraphs(w, strategy.bcastGraph)
 }
 
 func asMessage(b *kb.Vector) connection.Message {

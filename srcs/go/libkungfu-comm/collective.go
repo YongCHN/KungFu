@@ -44,8 +44,8 @@ func GoKungfuAllReduce(sendBuf, recvBuf unsafe.Pointer, count int, dtype C.KungF
 	return callCollectiveOP("AllReduce", name, sess.AllReduce, w, done)
 }
 
-//export GoKungfuLocalRootAllReduce
-func GoKungfuLocalRootAllReduce(sendBuf, recvBuf unsafe.Pointer, count int, dtype C.KungFu_Datatype, op C.KungFu_Op, pName *C.char, done *C.callback_t) int {
+//export GoKungfuCrossAllReduce
+func GoKungfuCrossAllReduce(sendBuf, recvBuf unsafe.Pointer, count int, dtype C.KungFu_Datatype, op C.KungFu_Op, pName *C.char, done *C.callback_t) int {
 	name := C.GoString(pName)
 	w := kb.Workspace{
 		SendBuf: toVector(sendBuf, count, dtype),
@@ -54,7 +54,7 @@ func GoKungfuLocalRootAllReduce(sendBuf, recvBuf unsafe.Pointer, count int, dtyp
 		Name:    name,
 	}
 	sess := defaultPeer.CurrentSession()
-	return callCollectiveOP("LocalRootAllReduce", name, sess.LocalRootAllReduce, w, done)
+	return callCollectiveOP("CrossAllReduce", name, sess.CrossAllReduce, w, done)
 }
 
 //export GoKungfuMonitoredAllReduce
@@ -120,6 +120,30 @@ func GoKungfuGather(sendBuf unsafe.Pointer, sendCount int, sendDtype C.KungFu_Da
 	}
 	sess := defaultPeer.CurrentSession()
 	return callCollectiveOP("Gather", name, sess.Gather, w, done)
+}
+
+//export GoKungfuLocalReduce
+func GoKungfuLocalReduce(sendBuf, recvBuf unsafe.Pointer, count int, dtype C.KungFu_Datatype, pName *C.char, done *C.callback_t) int {
+	name := C.GoString(pName)
+	w := kb.Workspace{
+		SendBuf: toVector(sendBuf, count, dtype),
+		RecvBuf: toVector(recvBuf, count, dtype),
+		Name:    name,
+	}
+	sess := defaultPeer.CurrentSession()
+	return callCollectiveOP("LocalReduce", name, sess.LocalReduce, w, done)
+}
+
+//export GoKungfuLocalBroadcast
+func GoKungfuLocalBroadcast(sendBuf, recvBuf unsafe.Pointer, count int, dtype C.KungFu_Datatype, pName *C.char, done *C.callback_t) int {
+	name := C.GoString(pName)
+	w := kb.Workspace{
+		SendBuf: toVector(sendBuf, count, dtype),
+		RecvBuf: toVector(recvBuf, count, dtype),
+		Name:    name,
+	}
+	sess := defaultPeer.CurrentSession()
+	return callCollectiveOP("LocalBroadcast", name, sess.LocalBroadcast, w, done)
 }
 
 func callCollectiveOP(opName, name string, op func(kb.Workspace) error, w kb.Workspace, done *C.callback_t) int {

@@ -102,20 +102,20 @@ class AllReduce : public AsyncOpKernel
 
 REGISTER_KUNGFU_KERNEL_BUILDER(AllReduce, DEVICE_CPU);
 
-// RootAllReduce performs allreduce among local masters
-REGISTER_KUNGFU_OP(RootAllReduce)
+// CrossAllReduce performs allreduce among local masters
+REGISTER_KUNGFU_OP(CrossAllReduce)
     .Attr("T: {int32, int64, float16, float32, float64}")
     .Attr("op: string")
     .Input("input: T")
     .Output("output: T")
     .SetShapeFn(shape_inference::UnchangedShape);
 
-class RootAllReduce : public AsyncOpKernel
+class CrossAllReduce : public AsyncOpKernel
 {
     KungFu_Op op_;
 
   public:
-    explicit RootAllReduce(OpKernelConstruction *context)
+    explicit CrossAllReduce(OpKernelConstruction *context)
         : AsyncOpKernel(context)
     {
         std::string op;
@@ -131,7 +131,7 @@ class RootAllReduce : public AsyncOpKernel
         Tensor *output      = nullptr;
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
-        _default_peer->LocalRootAllReduce(
+        _default_peer->CrossAllReduce(
             input.tensor_data().data(),
             const_cast<char *>(output->tensor_data().data()),
             input.NumElements(), to_kungfu_type(input.dtype()), op_,
@@ -139,7 +139,7 @@ class RootAllReduce : public AsyncOpKernel
     }
 };
 
-REGISTER_KUNGFU_KERNEL_BUILDER(RootAllReduce, DEVICE_CPU);
+REGISTER_KUNGFU_KERNEL_BUILDER(CrossAllReduce, DEVICE_CPU);
 
 REGISTER_KUNGFU_OP(MonitoredAllReduce)
     .Attr("T: {int32, int64, float16, float32, float64}")

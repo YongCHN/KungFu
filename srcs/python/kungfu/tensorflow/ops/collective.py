@@ -70,7 +70,7 @@ def _nccl_all_reduce(t):
 
 def _hierarchical_nccl_all_reduce(t):
     x = _op_lib.kungfu_local_nccl_reduce(t, input_tensor_name=t.name)
-    y = _op_lib.kungfu_root_all_reduce(x, op='sum')
+    y = _op_lib.kungfu_cross_all_reduce(x, op='sum')
     z = _op_lib.kungfu_local_nccl_broadcast(y, input_tensor_name=y.name)
     return z
 

@@ -8,6 +8,7 @@ import (
 	"github.com/lsds/KungFu/srcs/go/plan"
 	"github.com/lsds/KungFu/srcs/go/plan/graph"
 	"github.com/lsds/KungFu/srcs/go/plan/subgraph"
+	"github.com/lsds/KungFu/srcs/go/utils/assert"
 )
 
 type strategyList []strategy
@@ -106,13 +107,21 @@ func autoSelect(peers plan.PeerList) kb.Strategy {
 	return kb.BinaryTreeStar
 }
 
-func genPeerStrategyList(peers plan.PeerList, strategyName kb.Strategy) strategyList {
+func genLocalStrategyList(peers plan.PeerList) strategyList {
+	masters, parents := peers.PartitionByHost()
+	bcastGraph, m, ok := graph.FromForestArray(parents)
+	assert.True(ok)
+	assert.True(m == len(masters))
+	return strategyList{simpleStrategy(bcastGraph)}
+}
+
+func genGlobalStrategyList(peers plan.PeerList, strategyName kb.Strategy) strategyList {
 	return partitionStrategies[strategyName](peers)
 }
 
-func genRootStrategyList(peers plan.PeerList, strategyName kb.Strategy) strategyList {
+func genCrossStrategyList(peers plan.PeerList, strategyName kb.Strategy) strategyList {
 	if strategyName != kb.Ring {
-		log.Warnf("TODO supoort %s is supoorted for genRootStrategyList. using %s", strategyName, kb.Ring)
+		log.Warnf("TODO supoort %s for genCrossStrategyList. using %s", strategyName, kb.Ring)
 	}
 	n := len(peers)
 	masters, _ := peers.PartitionByHost()

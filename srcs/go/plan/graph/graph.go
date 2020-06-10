@@ -43,12 +43,11 @@ func New(n int) *Graph {
 
 // FromForestArray creates a Graph from array representation of a forest
 // f[i] represents the father of i, if f[i] != i
-func FromForestArray(forest []int32) (*Graph, int, bool) {
+func FromForestArray(forest []int) (*Graph, int, bool) {
 	var m int
 	n := len(forest)
 	g := New(n)
 	for i, father := range forest {
-		father := int(father)
 		switch {
 		case father < 0 || father >= n:
 			return nil, 0, false
@@ -60,6 +59,14 @@ func FromForestArray(forest []int32) (*Graph, int, bool) {
 	}
 	// FIXME: check cycle!
 	return g, m, true
+}
+
+func FromForestArrayI32(forest []int32) (*Graph, int, bool) {
+	f := make([]int, len(forest))
+	for i, r := range forest {
+		f[i] = int(r)
+	}
+	return FromForestArray(f)
 }
 
 func (g *Graph) AddEdge(i, j int) {

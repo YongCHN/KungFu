@@ -3,12 +3,14 @@
 
 void kungfu_python_init_nccl()
 {
-    kungfu::_local_nccl_controller.reset(new kungfu::nccl_controller);
+    kungfu::_global_nccl_controller.reset(new kungfu::nccl_controller(true));
+    kungfu::_local_nccl_controller.reset(new kungfu::nccl_controller(false));
 }
 
 void kungfu_python_finialize_nccl()
 {
     kungfu::_nccl_order_group.reset(nullptr);
+    kungfu::_global_nccl_controller.reset(nullptr);
     kungfu::_local_nccl_controller.reset(nullptr);
 }
 
@@ -17,10 +19,16 @@ namespace kungfu
 std::unique_ptr<nccl_controller> _global_nccl_controller;
 std::unique_ptr<nccl_controller> _local_nccl_controller;
 
+nccl_controller::nccl_controller(bool global) : _global(global) {}
+
 void nccl_controller::InitOnce()
 {
     if (_gpu_collective.get() == nullptr) {
-        _gpu_collective.reset(new_gpu_collective(*_default_peer));
+        if (_global) {
+            _gpu_collective.reset(new_global_gpu_collective(*_default_peer));
+        } else {
+            _gpu_collective.reset(new_local_gpu_collective(*_default_peer));
+        }
     }
 }
 
