@@ -22,11 +22,12 @@ type Node struct {
 	Nexts    Vertices
 }
 
+// Graph represents a graph of integers numbered from 0 to n - 1.
 type Graph struct {
 	Nodes []Node
 }
 
-func NewGraph(n int) *Graph {
+func New(n int) *Graph {
 	var nodes []Node
 	for i := 0; i < n; i++ {
 		nodes = append(nodes, Node{Rank: i})
@@ -36,12 +37,12 @@ func NewGraph(n int) *Graph {
 	}
 }
 
-// NewGraphFromForestArray creates a Graph from array representation of a forest
+// FromForestArray creates a Graph from array representation of a forest
 // f[i] represents the father of i, if f[i] != i
-func NewGraphFromForestArray(forest []int32) (*Graph, int, bool) {
+func FromForestArray(forest []int32) (*Graph, int, bool) {
 	var m int
 	n := len(forest)
-	g := NewGraph(n)
+	g := New(n)
 	for i, father := range forest {
 		father := int(father)
 		switch {
@@ -79,7 +80,7 @@ func (g Graph) Nexts(i int) []int {
 }
 
 func (g Graph) Reverse() *Graph {
-	r := NewGraph(len(g.Nodes))
+	r := New(len(g.Nodes))
 	for i, n := range g.Nodes {
 		for _, j := range n.Nexts {
 			r.Nodes[j].Nexts.Append(i)

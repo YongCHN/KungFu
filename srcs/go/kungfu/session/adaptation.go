@@ -22,7 +22,7 @@ func (sess *Session) SetPeerStrategy(sl strategyList) error {
 
 func (sess *Session) SimpleSetPeerStrategy(forest []int32) error {
 	assert.True(len(forest) == len(sess.peers))
-	bg, m, ok := graph.NewGraphFromForestArray(forest)
+	bg, m, ok := graph.FromForestArray(forest)
 	assert.True(m == 1)
 	assert.True(ok)
 	rg := plan.GenDefaultReduceGraph(bg)

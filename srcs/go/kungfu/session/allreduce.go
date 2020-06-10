@@ -12,7 +12,7 @@ func (sess *Session) AllReduce(w base.Workspace) error {
 }
 
 func (sess *Session) AllReduceWith(forest []int32, w base.Workspace) error {
-	bg, m, ok := graph.NewGraphFromForestArray(forest)
+	bg, m, ok := graph.FromForestArray(forest)
 	assert.True(m == 1)
 	assert.True(ok)
 	rg := plan.GenDefaultReduceGraph(bg)

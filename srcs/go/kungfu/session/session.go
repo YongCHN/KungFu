@@ -148,17 +148,13 @@ func (sess *Session) BytesConsensus(bs []byte, name string) (bool, error) {
 }
 
 func (sess *Session) Reduce(w kb.Workspace) error {
-	strategy := sess.peerStrategies[0] // Assuming len(sess.strategies) > 0
+	strategy := sess.peerStrategies[0] // Assuming len(sess.peerStrategies) > 0
 	return sess.runGraphs(w, strategy.reduceGraph)
 }
 
 func (sess *Session) Broadcast(w kb.Workspace) error {
-	strategy := sess.peerStrategies[0] // Assuming len(sess.strategies) > 0
+	strategy := sess.peerStrategies[0] // Assuming len(sess.peerStrategies) > 0
 	return sess.runGraphs(w, strategy.bcastGraph)
-}
-
-func (sess *Session) AllGather(w kb.Workspace) error {
-	return sess.runAllGather(w)
 }
 
 func (sess *Session) Gather(w kb.Workspace) error {
