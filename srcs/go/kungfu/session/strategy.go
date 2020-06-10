@@ -36,42 +36,37 @@ var partitionStrategies = map[kb.Strategy]partitionStrategy{
 	kb.MultiBinaryTreeStar: createMultiBinaryTreeStarStrategies,
 }
 
-func simpleSingleGraphStrategy(bcastGraph *graph.Graph) strategyList {
-	return []strategy{
-		{
-			reduceGraph: plan.GenDefaultReduceGraph(bcastGraph),
-			bcastGraph:  bcastGraph,
-		},
+func simpleStrategy(bcastGraph *graph.Graph) strategy {
+	return strategy{
+		reduceGraph: plan.GenDefaultReduceGraph(bcastGraph),
+		bcastGraph:  bcastGraph,
 	}
 }
 
 func createStarStrategies(peers plan.PeerList) strategyList {
 	bcastGraph := plan.GenStarBcastGraph(len(peers), defaultRoot)
-	return simpleSingleGraphStrategy(bcastGraph)
+	return strategyList{simpleStrategy(bcastGraph)}
 }
 
 func createTreeStrategies(peers plan.PeerList) strategyList {
 	bcastGraph := plan.GenTree(peers)
-	return simpleSingleGraphStrategy(bcastGraph)
+	return strategyList{simpleStrategy(bcastGraph)}
 }
 
 func createBinaryTreeStrategies(peers plan.PeerList) strategyList {
 	bcastGraph := plan.GenBinaryTree(len(peers))
-	return simpleSingleGraphStrategy(bcastGraph)
+	return strategyList{simpleStrategy(bcastGraph)}
 }
 
 func createBinaryTreeStarStrategies(peers plan.PeerList) strategyList {
 	bcastGraph := plan.GenBinaryTreeStar(peers)
-	return simpleSingleGraphStrategy(bcastGraph)
+	return strategyList{simpleStrategy(bcastGraph)}
 }
 
 func createMultiBinaryTreeStarStrategies(peers plan.PeerList) strategyList {
 	var sl strategyList
 	for _, bcastGraph := range plan.GenMultiBinaryTreeStar(peers) {
-		sl = append(sl, strategy{
-			reduceGraph: plan.GenDefaultReduceGraph(bcastGraph),
-			bcastGraph:  bcastGraph,
-		})
+		sl = append(sl, simpleStrategy(bcastGraph))
 	}
 	return sl
 }
@@ -81,11 +76,7 @@ func createCliqueStrategies(peers plan.PeerList) strategyList {
 	var sl strategyList
 	for r := 0; r < k; r++ {
 		bcastGraph := plan.GenStarBcastGraph(k, r)
-		reduceGraph := plan.GenDefaultReduceGraph(bcastGraph)
-		sl = append(sl, strategy{
-			reduceGraph: reduceGraph,
-			bcastGraph:  bcastGraph,
-		})
+		sl = append(sl, simpleStrategy(bcastGraph))
 	}
 	return sl
 }
