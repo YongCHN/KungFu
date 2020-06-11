@@ -2,7 +2,14 @@
 
 namespace tensorflow
 {
-REGISTER_KUNGFU_OP(StartNcclScheduler).Input("input: string");
+static const std::set<std::string> kungfu_nccl_scopes({
+    // "local", // TODO: support local
+    "global",
+});
+
+REGISTER_KUNGFU_OP(StartNcclScheduler)
+    .Attr("scope: string")  // local | global
+    .Input("input: string");
 
 class StartNcclScheduler : public OpKernel
 {
@@ -19,6 +26,10 @@ class StartNcclScheduler : public OpKernel
     explicit StartNcclScheduler(OpKernelConstruction *context)
         : OpKernel(context), counter_(0)
     {
+        std::string scope;
+        OP_REQUIRES_OK(context, context->GetAttr("scope", &scope));
+        OP_REQUIRES(context, kungfu_nccl_scopes.count(scope) > 0,
+                    errors::InvalidArgument("invalid scope"));
         kungfu::_global_nccl_controller->InitOnce();
     }
 

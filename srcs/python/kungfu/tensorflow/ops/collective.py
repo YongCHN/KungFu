@@ -96,15 +96,21 @@ def group_nccl_all_reduce(ts):
         return map_maybe(_nccl_all_reduce, ts)  # exactly one of ts is not None
     else:
         names = list(sorted(names))
-        import tensorflow as tf
         with tf.control_dependencies([
-                _start_nccl_scheduler(names),
+                _start_nccl_scheduler(names, scope='global'),
         ]):
             return map_maybe(_scheduled_nccl_all_reduce, ts)
 
 
 def group_hierarchical_nccl_all_reduce(ts):
     """Create a list of all_reduce operators for given tensor list, using NCCL and CPU."""
-    # TODO: support multiple tensors
-    assert (len(ts) == 1)
-    return [_hierarchical_nccl_all_reduce(ts[0])]
+    names = [t.name for t in ts if t is not None]
+    if len(names) == 1:
+        return map_maybe(_hierarchical_nccl_all_reduce, ts)
+    else:
+        assert (False)  # FIXME: impl
+        names = list(sorted(names))
+        with tf.control_dependencies([
+                _start_nccl_scheduler(names, scope='local'),
+        ]):
+            return map_maybe(_scheduled_nccl_all_reduce, ts)

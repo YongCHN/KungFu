@@ -16,6 +16,22 @@ void spin_wait(perftools::gputools::Event *event, int ms = 100)
     }
 }
 
+perftools::gputools::Event *create_init_ready_event(OpKernelContext *context)
+{
+    auto device_context = context->op_device_context();
+    auto executor       = device_context->stream()->parent();
+    auto ready_event    = new perftools::gputools::Event(executor);
+    ready_event->Init();
+    device_context->stream()->ThenRecordEvent(ready_event);
+    return ready_event;
+}
+
+void wait_delete_ready_event(perftools::gputools::Event *ready_event)
+{
+    spin_wait(ready_event);
+    delete ready_event;
+}
+
 REGISTER_KUNGFU_OP(ScheduledNcclAllReduce)
     .Attr("T: {int32, int64, float16, float32, float64}")
     .Attr("input_tensor_name: string")
@@ -44,15 +60,10 @@ class ScheduledNcclAllReduce : public AsyncOpKernel
         Tensor *output      = nullptr;
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
-        auto device_context = context->op_device_context();
-        auto executor       = device_context->stream()->parent();
-        auto ready_event    = new perftools::gputools::Event(executor);
-        ready_event->Init();
-        device_context->stream()->ThenRecordEvent(ready_event);
+        auto ready_event = create_init_ready_event(context);
         kungfu::_global_nccl_controller->ScheduledAllReduce(
             [ready_event = ready_event]() {
-                spin_wait(ready_event);
-                delete ready_event;
+                wait_delete_ready_event(ready_event);
             },
             input.tensor_data().data(),
             const_cast<char *>(output->tensor_data().data()),
@@ -92,13 +103,7 @@ class LocalNcclReduce : public AsyncOpKernel
         Tensor *output      = nullptr;
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
-        auto device_context = context->op_device_context();
-        auto executor       = device_context->stream()->parent();
-        auto ready_event    = new perftools::gputools::Event(executor);
-        ready_event->Init();
-        device_context->stream()->ThenRecordEvent(ready_event);
-        spin_wait(ready_event);
-        delete ready_event;
+        wait_delete_ready_event(create_init_ready_event(context));
         kungfu::_local_nccl_controller->Reduce(
             input.tensor_data().data(),
             const_cast<char *>(output->tensor_data().data()),
@@ -138,13 +143,7 @@ class LocalNcclBroadcast : public AsyncOpKernel
         Tensor *output      = nullptr;
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
-        auto device_context = context->op_device_context();
-        auto executor       = device_context->stream()->parent();
-        auto ready_event    = new perftools::gputools::Event(executor);
-        ready_event->Init();
-        device_context->stream()->ThenRecordEvent(ready_event);
-        spin_wait(ready_event);
-        delete ready_event;
+        wait_delete_ready_event(create_init_ready_event(context));
         kungfu::_local_nccl_controller->Broadcast(
             input.tensor_data().data(),
             const_cast<char *>(output->tensor_data().data()),
@@ -184,13 +183,7 @@ class NcclAllReduce : public AsyncOpKernel
         Tensor *output      = nullptr;
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
-        auto device_context = context->op_device_context();
-        auto executor       = device_context->stream()->parent();
-        auto ready_event    = new perftools::gputools::Event(executor);
-        ready_event->Init();
-        device_context->stream()->ThenRecordEvent(ready_event);
-        spin_wait(ready_event);
-        delete ready_event;
+        wait_delete_ready_event(create_init_ready_event(context));
         kungfu::_global_nccl_controller->AllReduce(
             input.tensor_data().data(),
             const_cast<char *>(output->tensor_data().data()),
