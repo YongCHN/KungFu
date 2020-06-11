@@ -103,6 +103,12 @@ if args.kf_optimizer:
     elif args.kf_optimizer == 'sync-sgd-nccl':
         from kungfu.tensorflow.optimizers import SynchronousSGDOptimizer
         opt = SynchronousSGDOptimizer(opt, nccl=True, nccl_fusion=args.fuse)
+    elif args.kf_optimizer == 'sync-sgd-hierarchical-nccl':
+        from kungfu.tensorflow.optimizers import SynchronousSGDOptimizer
+        opt = SynchronousSGDOptimizer(opt,
+                                      nccl=True,
+                                      nccl_fusion=args.fuse,
+                                      hierarchical_nccl=True)
     elif args.kf_optimizer == 'async-sgd':
         from kungfu.tensorflow.optimizers import PairAveragingOptimizer
         opt = PairAveragingOptimizer(opt, fuse_requests=args.fuse)
