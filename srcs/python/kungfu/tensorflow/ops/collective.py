@@ -101,3 +101,10 @@ def group_nccl_all_reduce(ts):
                 _start_nccl_scheduler(names),
         ]):
             return map_maybe(_scheduled_nccl_all_reduce, ts)
+
+
+def group_hierarchical_nccl_all_reduce(ts):
+    """Create a list of all_reduce operators for given tensor list, using NCCL and CPU."""
+    # TODO: support multiple tensors
+    assert (len(ts) == 1)
+    return [_hierarchical_nccl_all_reduce(ts[0])]
