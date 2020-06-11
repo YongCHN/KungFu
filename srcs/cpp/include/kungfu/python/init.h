@@ -51,8 +51,6 @@ class order_group
     std::vector<int32_t> Wait();
 };
 
-extern std::unique_ptr<order_group> _nccl_order_group;
-
 class nccl_controller
 {
     bool _global;
@@ -79,6 +77,16 @@ class nccl_controller
                   DoneCallback done);
 };
 
-extern std::unique_ptr<nccl_controller> _global_nccl_controller;
-extern std::unique_ptr<nccl_controller> _local_nccl_controller;
+// TFNCCLHelper is a singleton class that contains NCCL related global variables
+class TFNCCLHelper
+{
+  public:
+    std::unique_ptr<order_group> _nccl_order_group;
+    std::unique_ptr<nccl_controller> _global_nccl_controller;
+    std::unique_ptr<nccl_controller> _local_nccl_controller;
+
+    TFNCCLHelper();
+};
 }  // namespace kungfu
+
+extern std::unique_ptr<kungfu::TFNCCLHelper> _default_nccl_helper;

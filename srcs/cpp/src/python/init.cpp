@@ -58,6 +58,4 @@ std::vector<int32_t> order_group::Wait()
     order_group_wait(og_, arrive_order.data());
     return arrive_order;
 }
-
-std::unique_ptr<order_group> _nccl_order_group;
 }  // namespace kungfu

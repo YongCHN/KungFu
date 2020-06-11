@@ -30,7 +30,11 @@ class StartNcclScheduler : public OpKernel
         OP_REQUIRES_OK(context, context->GetAttr("scope", &scope));
         OP_REQUIRES(context, kungfu_nccl_scopes.count(scope) > 0,
                     errors::InvalidArgument("invalid scope"));
-        kungfu::_global_nccl_controller->InitOnce();
+        if (scope == "global") {
+            _default_nccl_helper->_global_nccl_controller->InitOnce();
+        } else if (scope == "local") {
+            _default_nccl_helper->_local_nccl_controller->InitOnce();
+        }
     }
 
     void Compute(OpKernelContext *context) override
@@ -41,11 +45,15 @@ class StartNcclScheduler : public OpKernel
         for (int i = 0; i < t_names.size(); ++i) {
             names.push_back(t_names(i));
         }
-        if (names.size() != order_.size()) { ResetOrder(names.size()); }
-        if (kungfu::_nccl_order_group.get() != nullptr) {
+        if (names.size() != order_.size()) {
+            // FIXME: also check value of names
+            // FIXME: reset counter
+            ResetOrder(names.size());
+        }
+        if (_default_nccl_helper->_nccl_order_group.get() != nullptr) {
             if (counter_ == 1) {
                 const std::vector<int32_t> arrive_order =
-                    kungfu::_nccl_order_group->Wait();
+                    _default_nccl_helper->_nccl_order_group->Wait();
                 if (arrive_order.size() == order_.size()) {
                     _default_peer->Broadcast(
                         arrive_order.data(), order_.data(), order_.size(),
@@ -53,7 +61,8 @@ class StartNcclScheduler : public OpKernel
                 }
             }
         }
-        kungfu::_nccl_order_group.reset(new kungfu::order_group(names, order_));
+        _default_nccl_helper->_nccl_order_group.reset(
+            new kungfu::order_group(names, order_));
         ++counter_;
     }
 };

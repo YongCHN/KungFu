@@ -1,24 +1,17 @@
 #include <kungfu.h>
 #include <kungfu/python/init.h>
 
+std::unique_ptr<kungfu::TFNCCLHelper> _default_nccl_helper;
+
 void kungfu_python_init_nccl()
 {
-    kungfu::_global_nccl_controller.reset(new kungfu::nccl_controller(true));
-    kungfu::_local_nccl_controller.reset(new kungfu::nccl_controller(false));
+    _default_nccl_helper.reset(new kungfu::TFNCCLHelper);
 }
 
-void kungfu_python_finialize_nccl()
-{
-    kungfu::_nccl_order_group.reset(nullptr);
-    kungfu::_global_nccl_controller.reset(nullptr);
-    kungfu::_local_nccl_controller.reset(nullptr);
-}
+void kungfu_python_finialize_nccl() { _default_nccl_helper.reset(nullptr); }
 
 namespace kungfu
 {
-std::unique_ptr<nccl_controller> _global_nccl_controller;
-std::unique_ptr<nccl_controller> _local_nccl_controller;
-
 nccl_controller::nccl_controller(bool global) : _global(global) {}
 
 void nccl_controller::InitOnce()
@@ -37,11 +30,12 @@ int nccl_controller::ScheduledAllReduce(DoneCallback ready, const void *sendbuf,
                                         KungFu_Datatype dtype, KungFu_Op op,
                                         const char *name, DoneCallback done)
 {
-    kungfu::_nccl_order_group->Start(name, [=, comm = _gpu_collective.get()]() {
-        ready();
-        comm->all_reduce(sendbuf, recvbuf, count, dtype);
-        done();
-    });
+    _default_nccl_helper->_nccl_order_group->Start(
+        name, [=, comm = _gpu_collective.get()]() {
+            ready();
+            comm->all_reduce(sendbuf, recvbuf, count, dtype);
+            done();
+        });
     return 0;
 }
 
@@ -70,5 +64,11 @@ int nccl_controller::AllReduce(const void *sendbuf, void *recvbuf, int count,
     _gpu_collective->all_reduce(sendbuf, recvbuf, count, dtype);
     done();
     return 0;
+}
+
+TFNCCLHelper::TFNCCLHelper()
+{
+    _global_nccl_controller.reset(new nccl_controller(true));
+    _local_nccl_controller.reset(new nccl_controller(false));
 }
 }  // namespace kungfu

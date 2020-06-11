@@ -32,6 +32,96 @@ void wait_delete_ready_event(perftools::gputools::Event *ready_event)
     delete ready_event;
 }
 
+REGISTER_KUNGFU_OP(ScheduledLocalNcclReduce)
+    .Attr("T: {int32, int64, float16, float32, float64}")
+    .Attr("input_tensor_name: string")
+    .Input("input: T")
+    .Output("output: T")
+    .SetShapeFn(shape_inference::UnchangedShape);
+
+class ScheduledLocalNcclReduce : public AsyncOpKernel
+{
+    std::string input_tensor_name_;
+
+  public:
+    explicit ScheduledLocalNcclReduce(OpKernelConstruction *context)
+        : AsyncOpKernel(context)
+    {
+        OP_REQUIRES_OK(context, context->GetAttr("input_tensor_name",
+                                                 &input_tensor_name_));
+        OP_REQUIRES(
+            context, input_tensor_name_.size() >= 0,
+            errors::InvalidArgument("input_tensor_name must not be empty"));
+    }
+
+    void ComputeAsync(OpKernelContext *context, DoneCallback done) override
+    {
+        const Tensor &input = context->input(0);
+        Tensor *output      = nullptr;
+        OP_REQUIRES_OK_ASYNC(
+            context, context->allocate_output(0, input.shape(), &output), done);
+        LOG(ERROR) << "TODO :"
+                   << "ScheduledLocalNcclReduce";
+        done();
+        // auto ready_event = create_init_ready_event(context);
+        // kungfu::_global_nccl_controller->ScheduledAllReduce(
+        //     [ready_event = ready_event]() {
+        //         wait_delete_ready_event(ready_event);
+        //     },
+        //     input.tensor_data().data(),
+        //     const_cast<char *>(output->tensor_data().data()),
+        //     input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,
+        //     input_tensor_name_.c_str(), done);
+    }
+};
+
+REGISTER_KUNGFU_KERNEL_BUILDER(ScheduledLocalNcclReduce, DEVICE_GPU);
+
+REGISTER_KUNGFU_OP(ScheduledLocalNcclBroadcast)
+    .Attr("T: {int32, int64, float16, float32, float64}")
+    .Attr("input_tensor_name: string")
+    .Input("input: T")
+    .Output("output: T")
+    .SetShapeFn(shape_inference::UnchangedShape);
+
+class ScheduledLocalNcclBroadcast : public AsyncOpKernel
+{
+    std::string input_tensor_name_;
+
+  public:
+    explicit ScheduledLocalNcclBroadcast(OpKernelConstruction *context)
+        : AsyncOpKernel(context)
+    {
+        OP_REQUIRES_OK(context, context->GetAttr("input_tensor_name",
+                                                 &input_tensor_name_));
+        OP_REQUIRES(
+            context, input_tensor_name_.size() >= 0,
+            errors::InvalidArgument("input_tensor_name must not be empty"));
+    }
+
+    void ComputeAsync(OpKernelContext *context, DoneCallback done) override
+    {
+        const Tensor &input = context->input(0);
+        Tensor *output      = nullptr;
+        OP_REQUIRES_OK_ASYNC(
+            context, context->allocate_output(0, input.shape(), &output), done);
+        LOG(ERROR) << "TODO :"
+                   << "ScheduledLocalNcclBroadcast";
+        done();
+        // auto ready_event = create_init_ready_event(context);
+        // kungfu::_global_nccl_controller->ScheduledAllReduce(
+        //     [ready_event = ready_event]() {
+        //         wait_delete_ready_event(ready_event);
+        //     },
+        //     input.tensor_data().data(),
+        //     const_cast<char *>(output->tensor_data().data()),
+        //     input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,
+        //     input_tensor_name_.c_str(), done);
+    }
+};
+
+REGISTER_KUNGFU_KERNEL_BUILDER(ScheduledLocalNcclBroadcast, DEVICE_GPU);
+
 REGISTER_KUNGFU_OP(ScheduledNcclAllReduce)
     .Attr("T: {int32, int64, float16, float32, float64}")
     .Attr("input_tensor_name: string")
@@ -61,7 +151,7 @@ class ScheduledNcclAllReduce : public AsyncOpKernel
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
         auto ready_event = create_init_ready_event(context);
-        kungfu::_global_nccl_controller->ScheduledAllReduce(
+        _default_nccl_helper->_global_nccl_controller->ScheduledAllReduce(
             [ready_event = ready_event]() {
                 wait_delete_ready_event(ready_event);
             },
@@ -94,7 +184,7 @@ class LocalNcclReduce : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
-        kungfu::_local_nccl_controller->InitOnce();
+        _default_nccl_helper->_local_nccl_controller->InitOnce();
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -104,7 +194,7 @@ class LocalNcclReduce : public AsyncOpKernel
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
         wait_delete_ready_event(create_init_ready_event(context));
-        kungfu::_local_nccl_controller->Reduce(
+        _default_nccl_helper->_local_nccl_controller->Reduce(
             input.tensor_data().data(),
             const_cast<char *>(output->tensor_data().data()),
             input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,
@@ -134,7 +224,7 @@ class LocalNcclBroadcast : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
-        kungfu::_local_nccl_controller->InitOnce();
+        _default_nccl_helper->_local_nccl_controller->InitOnce();
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -144,7 +234,7 @@ class LocalNcclBroadcast : public AsyncOpKernel
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
         wait_delete_ready_event(create_init_ready_event(context));
-        kungfu::_local_nccl_controller->Broadcast(
+        _default_nccl_helper->_local_nccl_controller->Broadcast(
             input.tensor_data().data(),
             const_cast<char *>(output->tensor_data().data()),
             input.NumElements(), to_kungfu_type(input.dtype()),
@@ -174,7 +264,7 @@ class NcclAllReduce : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
-        kungfu::_global_nccl_controller->InitOnce();
+        _default_nccl_helper->_global_nccl_controller->InitOnce();
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -184,7 +274,7 @@ class NcclAllReduce : public AsyncOpKernel
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
         wait_delete_ready_event(create_init_ready_event(context));
-        kungfu::_global_nccl_controller->AllReduce(
+        _default_nccl_helper->_global_nccl_controller->AllReduce(
             input.tensor_data().data(),
             const_cast<char *>(output->tensor_data().data()),
             input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,

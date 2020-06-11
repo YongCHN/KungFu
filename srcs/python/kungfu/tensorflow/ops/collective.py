@@ -68,16 +68,26 @@ def _nccl_all_reduce(t):
     return _op_lib.kungfu_nccl_all_reduce(t, input_tensor_name=t.name)
 
 
-def _hierarchical_nccl_all_reduce(t):
-    x = _op_lib.kungfu_local_nccl_reduce(t, input_tensor_name=t.name)
-    y = _op_lib.kungfu_cross_all_reduce(x, op='sum')
-    z = _op_lib.kungfu_local_nccl_broadcast(y, input_tensor_name=y.name)
-    return z
+def _scheduled_local_nccl_reduce(t):
+    return _op_lib.kungfu_scheduled_local_nccl_reduce(t,
+                                                      input_tensor_name=t.name)
+
+
+def _scheduled_local_nccl_broadcat(t):
+    return _op_lib.kungfu_scheduled_local_nccl_reduce(t,
+                                                      input_tensor_name=t.name)
 
 
 def _scheduled_nccl_all_reduce(t):
     return _op_lib.kungfu_scheduled_nccl_all_reduce(t,
                                                     input_tensor_name=t.name)
+
+
+def _hierarchical_nccl_all_reduce(t):
+    x = _op_lib.kungfu_local_nccl_reduce(t, input_tensor_name=t.name)
+    y = _op_lib.kungfu_cross_all_reduce(x, op='sum')
+    z = _op_lib.kungfu_local_nccl_broadcast(y, input_tensor_name=y.name)
+    return z
 
 
 def _start_nccl_scheduler(*args, **kwargs):
