@@ -81,8 +81,9 @@ class nccl_controller
 class TFNCCLHelper
 {
   public:
-    std::unique_ptr<order_group> _nccl_order_group;
+    std::unique_ptr<order_group> _global_nccl_scheduler;
     std::unique_ptr<nccl_controller> _global_nccl_controller;
+
     std::unique_ptr<nccl_controller> _local_nccl_controller;
 
     TFNCCLHelper();

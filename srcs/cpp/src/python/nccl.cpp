@@ -30,7 +30,7 @@ int nccl_controller::ScheduledAllReduce(DoneCallback ready, const void *sendbuf,
                                         KungFu_Datatype dtype, KungFu_Op op,
                                         const char *name, DoneCallback done)
 {
-    _default_nccl_helper->_nccl_order_group->Start(
+    _default_nccl_helper->_global_nccl_scheduler->Start(
         name, [=, comm = _gpu_collective.get()]() {
             ready();
             comm->all_reduce(sendbuf, recvbuf, count, dtype);

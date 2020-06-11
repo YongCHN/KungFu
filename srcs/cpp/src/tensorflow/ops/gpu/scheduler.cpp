@@ -50,10 +50,10 @@ class StartNcclScheduler : public OpKernel
             // FIXME: reset counter
             ResetOrder(names.size());
         }
-        if (_default_nccl_helper->_nccl_order_group.get() != nullptr) {
+        if (_default_nccl_helper->_global_nccl_scheduler.get() != nullptr) {
             if (counter_ == 1) {
                 const std::vector<int32_t> arrive_order =
-                    _default_nccl_helper->_nccl_order_group->Wait();
+                    _default_nccl_helper->_global_nccl_scheduler->Wait();
                 if (arrive_order.size() == order_.size()) {
                     _default_peer->Broadcast(
                         arrive_order.data(), order_.data(), order_.size(),
@@ -61,7 +61,7 @@ class StartNcclScheduler : public OpKernel
                 }
             }
         }
-        _default_nccl_helper->_nccl_order_group.reset(
+        _default_nccl_helper->_global_nccl_scheduler.reset(
             new kungfu::order_group(names, order_));
         ++counter_;
     }
