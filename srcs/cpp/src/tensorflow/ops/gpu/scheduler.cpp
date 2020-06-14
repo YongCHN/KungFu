@@ -2,39 +2,33 @@
 
 namespace tensorflow
 {
-static const std::set<std::string> kungfu_nccl_scopes({
-    // "local", // TODO: support local
-    "global",
+static const std::map<std::string, KungFu_NCCLScope> kungfu_nccl_scopes({
+    {"global", KungFu_NCCL_GLOBAL},
+    {"local", KungFu_NCCL_LOCAL},
 });
 
 REGISTER_KUNGFU_OP(StartNcclScheduler)
-    .Attr("scope: string")  // local | global
+    .Attr("scheduler: string")
+    .Attr("scope: string")
     .Input("input: string");
 
 class StartNcclScheduler : public OpKernel
 {
-    int counter_;
-    std::vector<int32_t> order_;
-
-    void ResetOrder(int n)
-    {
-        order_.resize(n);
-        std::iota(order_.begin(), order_.end(), 0);
-    }
+    kungfu::NCCLScheduler *scheduler_;
 
   public:
     explicit StartNcclScheduler(OpKernelConstruction *context)
-        : OpKernel(context), counter_(0)
+        : OpKernel(context)
     {
-        std::string scope;
-        OP_REQUIRES_OK(context, context->GetAttr("scope", &scope));
-        OP_REQUIRES(context, kungfu_nccl_scopes.count(scope) > 0,
+        std::string scheduler;
+        OP_REQUIRES_OK(context, context->GetAttr("scheduler", &scheduler));
+        std::string scope_name;
+        OP_REQUIRES_OK(context, context->GetAttr("scope", &scope_name));
+        OP_REQUIRES(context, kungfu_nccl_scopes.count(scope_name) > 0,
                     errors::InvalidArgument("invalid scope"));
-        if (scope == "global") {
-            _default_nccl_helper->_global_nccl_controller->InitOnce();
-        } else if (scope == "local") {
-            _default_nccl_helper->_local_nccl_controller->InitOnce();
-        }
+        const auto scope = kungfu_nccl_scopes.at(scope_name);
+        scheduler_ = _default_nccl_helper->CreateScheduler(scheduler, scope);
+        _default_nccl_helper->EnsureController(scope);
     }
 
     void Compute(OpKernelContext *context) override
@@ -45,25 +39,7 @@ class StartNcclScheduler : public OpKernel
         for (int i = 0; i < t_names.size(); ++i) {
             names.push_back(t_names(i));
         }
-        if (names.size() != order_.size()) {
-            // FIXME: also check value of names
-            // FIXME: reset counter
-            ResetOrder(names.size());
-        }
-        if (_default_nccl_helper->_global_nccl_scheduler.get() != nullptr) {
-            if (counter_ == 1) {
-                const std::vector<int32_t> arrive_order =
-                    _default_nccl_helper->_global_nccl_scheduler->Wait();
-                if (arrive_order.size() == order_.size()) {
-                    _default_peer->Broadcast(
-                        arrive_order.data(), order_.data(), order_.size(),
-                        to_kungfu_type(DT_INT32), name().c_str());
-                }
-            }
-        }
-        _default_nccl_helper->_global_nccl_scheduler.reset(
-            new kungfu::order_group(names, order_));
-        ++counter_;
+        scheduler_->Reset(names);
     }
 };
 

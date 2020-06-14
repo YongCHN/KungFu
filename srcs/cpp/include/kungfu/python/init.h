@@ -26,6 +26,13 @@ extern int kungfu_local_size();  // get current local size
 extern void kungfu_barrier();
 
 extern int kungfu_propose_new_size(int new_size);
+
+enum KungFu_NCCLScope {
+    KungFu_NCCL_GLOBAL,
+    KungFu_NCCL_LOCAL,
+};
+
+typedef enum KungFu_NCCLScope KungFu_NCCLScope;
 }
 
 extern std::unique_ptr<kungfu::Peer> _default_peer;
@@ -51,43 +58,67 @@ class order_group
     std::vector<int32_t> Wait();
 };
 
+// Workspace holds metadata for AllReduce, Reduce, Broadcast
+struct Workspace {
+    const void *sendbuf;
+    void *recvbuf;
+    const int count;
+    const KungFu_Datatype dtype;
+};
+
 class nccl_controller
 {
-    bool _global;
+    KungFu_NCCLScope scope_;
     std::unique_ptr<gpu_collective> _gpu_collective;
 
   public:
-    nccl_controller(bool global);
+    nccl_controller(const KungFu_NCCLScope scope);
 
     void InitOnce();
 
-    int ScheduledAllReduce(DoneCallback ready, const void *sendbuf,
-                           void *recvbuf, int count, KungFu_Datatype dtype,
-                           KungFu_Op op, const char *name, DoneCallback done);
+    int Reduce(const Workspace &w, KungFu_Op op, DoneCallback done);
 
-    int Reduce(const void *sendbuf, void *recvbuf, int count,
-               KungFu_Datatype dtype, KungFu_Op op, const char *name,
-               DoneCallback done);
+    int Broadcast(const Workspace &w, DoneCallback done);
 
-    int Broadcast(const void *sendbuf, void *recvbuf, int count,
-                  KungFu_Datatype dtype, const char *name, DoneCallback done);
-
-    int AllReduce(const void *sendbuf, void *recvbuf, int count,
-                  KungFu_Datatype dtype, KungFu_Op op, const char *name,
-                  DoneCallback done);
+    int AllReduce(const Workspace &w, KungFu_Op op, DoneCallback done);
 };
 
-// TFNCCLHelper is a singleton class that contains NCCL related global variables
-class TFNCCLHelper
+class NCCLScheduler
 {
+    const bool auto_order_;
+    const std::string name_;
+    const KungFu_NCCLScope scope_;
+
+    int counter_;
+    std::vector<int32_t> order_;
+
+    std::unique_ptr<order_group> order_group_;
+
+    void ResetOrder(int n);
+
   public:
-    std::unique_ptr<order_group> _global_nccl_scheduler;
-    std::unique_ptr<nccl_controller> _global_nccl_controller;
+    NCCLScheduler(const std::string &name, const KungFu_NCCLScope scope);
 
-    std::unique_ptr<nccl_controller> _local_nccl_controller;
+    void Reset(const std::vector<std::string> &names);
 
-    TFNCCLHelper();
+    void Start(const std::string &name, const order_group::Task &task);
+};
+
+// NCCLHelper is a singleton class that contains NCCL related global variables
+class NCCLHelper
+{
+    std::map<KungFu_NCCLScope, std::unique_ptr<nccl_controller>> controllers_;
+    std::map<std::string, std::unique_ptr<NCCLScheduler>> schedulers_;
+
+  public:
+    void EnsureController(const KungFu_NCCLScope scope);
+
+    nccl_controller *GetController(const KungFu_NCCLScope scope);
+
+    NCCLScheduler *CreateScheduler(const std::string &name,
+                                   const KungFu_NCCLScope scope);
+    NCCLScheduler *GetScheduler(const std::string &name) const;
 };
 }  // namespace kungfu
 
-extern std::unique_ptr<kungfu::TFNCCLHelper> _default_nccl_helper;
+extern std::unique_ptr<kungfu::NCCLHelper> _default_nccl_helper;

@@ -52,6 +52,7 @@ _group_all_reduce_func = {
 }
 
 _model_sizes = {
+    'MNIST-SLP': model_sizes.mnist_slp,
     'ResNet50': model_sizes.resnet50_imagenet,
     'VGG16': model_sizes.vgg16_imagenet,
     'BERT': model_sizes.bert,
@@ -83,12 +84,12 @@ def parse_args():
                    type=str,
                    default='ResNet50',
                    help='ResNet50 | VGG16 | BERT')
-
     p.add_argument('--method',
                    type=str,
                    default='CPU',
                    help='CPU | NCCL | HOROVOD')
     p.add_argument('--fuse', action='store_true', default=False, help='')
+    p.add_argument('--max-count', type=int, default=0, help='max grad count')
     return p.parse_args()
 
 
@@ -136,8 +137,11 @@ def main(_):
     sizes = _model_sizes[args.model]
     if args.fuse:
         sizes = [sum(sizes)]
+    if args.max_count > 0 and len(sizes) > args.max_count:
+        sizes = sizes[:args.max_count]
     all_reduce_benchmark(sizes, dtype, args.method)
 
 
 if __name__ == "__main__":
     main(sys.argv)
+

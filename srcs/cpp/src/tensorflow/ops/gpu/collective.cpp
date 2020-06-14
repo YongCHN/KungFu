@@ -35,6 +35,7 @@ void wait_delete_ready_event(perftools::gputools::Event *ready_event)
 REGISTER_KUNGFU_OP(ScheduledLocalNcclReduce)
     .Attr("T: {int32, int64, float16, float32, float64}")
     .Attr("input_tensor_name: string")
+    .Attr("scheduler: string")
     .Input("input: T")
     .Output("output: T")
     .SetShapeFn(shape_inference::UnchangedShape);
@@ -42,6 +43,7 @@ REGISTER_KUNGFU_OP(ScheduledLocalNcclReduce)
 class ScheduledLocalNcclReduce : public AsyncOpKernel
 {
     std::string input_tensor_name_;
+    kungfu::NCCLScheduler *scheduler_;
 
   public:
     explicit ScheduledLocalNcclReduce(OpKernelConstruction *context)
@@ -52,6 +54,9 @@ class ScheduledLocalNcclReduce : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
+        std::string scheduler;
+        OP_REQUIRES_OK(context, context->GetAttr("scheduler", &scheduler));
+        scheduler_ = _default_nccl_helper->GetScheduler(scheduler);
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -60,18 +65,13 @@ class ScheduledLocalNcclReduce : public AsyncOpKernel
         Tensor *output      = nullptr;
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
-        LOG(ERROR) << "TODO :"
-                   << "ScheduledLocalNcclReduce";
-        done();
-        // auto ready_event = create_init_ready_event(context);
-        // kungfu::_global_nccl_controller->ScheduledAllReduce(
-        //     [ready_event = ready_event]() {
-        //         wait_delete_ready_event(ready_event);
-        //     },
-        //     input.tensor_data().data(),
-        //     const_cast<char *>(output->tensor_data().data()),
-        //     input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,
-        //     input_tensor_name_.c_str(), done);
+        const auto w     = make_workspace(input, output);
+        auto ready_event = create_init_ready_event(context);
+        auto nccl = _default_nccl_helper->GetController(KungFu_NCCL_LOCAL);
+        scheduler_->Start(input_tensor_name_, [=] {
+            wait_delete_ready_event(ready_event);
+            nccl->Reduce(w, KungFu_SUM, done);
+        });
     }
 };
 
@@ -80,6 +80,7 @@ REGISTER_KUNGFU_KERNEL_BUILDER(ScheduledLocalNcclReduce, DEVICE_GPU);
 REGISTER_KUNGFU_OP(ScheduledLocalNcclBroadcast)
     .Attr("T: {int32, int64, float16, float32, float64}")
     .Attr("input_tensor_name: string")
+    .Attr("scheduler: string")
     .Input("input: T")
     .Output("output: T")
     .SetShapeFn(shape_inference::UnchangedShape);
@@ -87,6 +88,7 @@ REGISTER_KUNGFU_OP(ScheduledLocalNcclBroadcast)
 class ScheduledLocalNcclBroadcast : public AsyncOpKernel
 {
     std::string input_tensor_name_;
+    kungfu::NCCLScheduler *scheduler_;
 
   public:
     explicit ScheduledLocalNcclBroadcast(OpKernelConstruction *context)
@@ -97,6 +99,9 @@ class ScheduledLocalNcclBroadcast : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
+        std::string scheduler;
+        OP_REQUIRES_OK(context, context->GetAttr("scheduler", &scheduler));
+        scheduler_ = _default_nccl_helper->GetScheduler(scheduler);
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -105,18 +110,13 @@ class ScheduledLocalNcclBroadcast : public AsyncOpKernel
         Tensor *output      = nullptr;
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
-        LOG(ERROR) << "TODO :"
-                   << "ScheduledLocalNcclBroadcast";
-        done();
-        // auto ready_event = create_init_ready_event(context);
-        // kungfu::_global_nccl_controller->ScheduledAllReduce(
-        //     [ready_event = ready_event]() {
-        //         wait_delete_ready_event(ready_event);
-        //     },
-        //     input.tensor_data().data(),
-        //     const_cast<char *>(output->tensor_data().data()),
-        //     input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,
-        //     input_tensor_name_.c_str(), done);
+        const auto w     = make_workspace(input, output);
+        auto ready_event = create_init_ready_event(context);
+        auto nccl = _default_nccl_helper->GetController(KungFu_NCCL_LOCAL);
+        scheduler_->Start(input_tensor_name_, [=] {
+            wait_delete_ready_event(ready_event);
+            nccl->Broadcast(w, done);
+        });
     }
 };
 
@@ -125,6 +125,7 @@ REGISTER_KUNGFU_KERNEL_BUILDER(ScheduledLocalNcclBroadcast, DEVICE_GPU);
 REGISTER_KUNGFU_OP(ScheduledNcclAllReduce)
     .Attr("T: {int32, int64, float16, float32, float64}")
     .Attr("input_tensor_name: string")
+    .Attr("scheduler: string")
     .Input("input: T")
     .Output("output: T")
     .SetShapeFn(shape_inference::UnchangedShape);
@@ -132,6 +133,7 @@ REGISTER_KUNGFU_OP(ScheduledNcclAllReduce)
 class ScheduledNcclAllReduce : public AsyncOpKernel
 {
     std::string input_tensor_name_;
+    kungfu::NCCLScheduler *scheduler_;
 
   public:
     explicit ScheduledNcclAllReduce(OpKernelConstruction *context)
@@ -142,6 +144,9 @@ class ScheduledNcclAllReduce : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
+        std::string scheduler;
+        OP_REQUIRES_OK(context, context->GetAttr("scheduler", &scheduler));
+        scheduler_ = _default_nccl_helper->GetScheduler(scheduler);
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -150,15 +155,13 @@ class ScheduledNcclAllReduce : public AsyncOpKernel
         Tensor *output      = nullptr;
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
+        const auto w     = make_workspace(input, output);
         auto ready_event = create_init_ready_event(context);
-        _default_nccl_helper->_global_nccl_controller->ScheduledAllReduce(
-            [ready_event = ready_event]() {
-                wait_delete_ready_event(ready_event);
-            },
-            input.tensor_data().data(),
-            const_cast<char *>(output->tensor_data().data()),
-            input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,
-            input_tensor_name_.c_str(), done);
+        auto nccl = _default_nccl_helper->GetController(KungFu_NCCL_GLOBAL);
+        scheduler_->Start(input_tensor_name_, [=] {
+            wait_delete_ready_event(ready_event);
+            nccl->AllReduce(w, KungFu_SUM, done);
+        });
     }
 };
 
@@ -184,7 +187,7 @@ class LocalNcclReduce : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
-        _default_nccl_helper->_local_nccl_controller->InitOnce();
+        _default_nccl_helper->EnsureController(KungFu_NCCL_LOCAL);
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -194,11 +197,8 @@ class LocalNcclReduce : public AsyncOpKernel
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
         wait_delete_ready_event(create_init_ready_event(context));
-        _default_nccl_helper->_local_nccl_controller->Reduce(
-            input.tensor_data().data(),
-            const_cast<char *>(output->tensor_data().data()),
-            input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,
-            input_tensor_name_.c_str(), done);
+        auto nccl = _default_nccl_helper->GetController(KungFu_NCCL_LOCAL);
+        nccl->Reduce(make_workspace(input, output), KungFu_SUM, done);
     }
 };
 
@@ -224,7 +224,7 @@ class LocalNcclBroadcast : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
-        _default_nccl_helper->_local_nccl_controller->InitOnce();
+        _default_nccl_helper->EnsureController(KungFu_NCCL_LOCAL);
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -234,11 +234,8 @@ class LocalNcclBroadcast : public AsyncOpKernel
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
         wait_delete_ready_event(create_init_ready_event(context));
-        _default_nccl_helper->_local_nccl_controller->Broadcast(
-            input.tensor_data().data(),
-            const_cast<char *>(output->tensor_data().data()),
-            input.NumElements(), to_kungfu_type(input.dtype()),
-            input_tensor_name_.c_str(), done);
+        auto nccl = _default_nccl_helper->GetController(KungFu_NCCL_LOCAL);
+        nccl->Broadcast(make_workspace(input, output), done);
     }
 };
 
@@ -264,7 +261,7 @@ class NcclAllReduce : public AsyncOpKernel
         OP_REQUIRES(
             context, input_tensor_name_.size() >= 0,
             errors::InvalidArgument("input_tensor_name must not be empty"));
-        _default_nccl_helper->_global_nccl_controller->InitOnce();
+        _default_nccl_helper->EnsureController(KungFu_NCCL_GLOBAL);
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override
@@ -274,11 +271,8 @@ class NcclAllReduce : public AsyncOpKernel
         OP_REQUIRES_OK_ASYNC(
             context, context->allocate_output(0, input.shape(), &output), done);
         wait_delete_ready_event(create_init_ready_event(context));
-        _default_nccl_helper->_global_nccl_controller->AllReduce(
-            input.tensor_data().data(),
-            const_cast<char *>(output->tensor_data().data()),
-            input.NumElements(), to_kungfu_type(input.dtype()), KungFu_SUM,
-            input_tensor_name_.c_str(), done);
+        auto nccl = _default_nccl_helper->GetController(KungFu_NCCL_GLOBAL);
+        nccl->AllReduce(make_workspace(input, output), KungFu_SUM, done);
     }
 };
 
