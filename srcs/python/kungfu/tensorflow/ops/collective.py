@@ -67,20 +67,22 @@ def _nccl_all_reduce(t):
     return _op_lib.kungfu_nccl_all_reduce(t, input_tensor_name=t.name)
 
 
-def _scheduled_local_nccl_reduce(t, scheduler):
+def _scheduled_local_nccl_reduce(t, scheduler, scope):
     return _op_lib.kungfu_scheduled_local_nccl_reduce(t,
                                                       scheduler=scheduler,
+                                                      scope=scope,
                                                       input_tensor_name=t.name)
 
 
-def _scheduled_local_nccl_broadcast(t, scheduler):
+def _scheduled_local_nccl_broadcast(t, scheduler, scope):
     return _op_lib.kungfu_scheduled_local_nccl_broadcast(
-        t, scheduler=scheduler, input_tensor_name=t.name)
+        t, scheduler=scheduler, scope=scope, input_tensor_name=t.name)
 
 
-def _scheduled_nccl_all_reduce(t, scheduler):
+def _scheduled_nccl_all_reduce(t, scheduler, scope):
     return _op_lib.kungfu_scheduled_nccl_all_reduce(t,
                                                     scheduler=scheduler,
+                                                    scope=scope,
                                                     input_tensor_name=t.name)
 
 
@@ -109,7 +111,9 @@ def group_nccl_all_reduce(ts):
         scheduler = 'global_all_reduce'
 
         def all_reduce(t):
-            return _scheduled_nccl_all_reduce(t, scheduler=scheduler)
+            return _scheduled_nccl_all_reduce(t,
+                                              scheduler=scheduler,
+                                              scope='global')
 
         names = list(sorted(names))
         with tf.control_dependencies([
@@ -131,14 +135,14 @@ def group_hierarchical_nccl_all_reduce(ts):
 
         def local_reduce(t):
             return _scheduled_local_nccl_reduce(
-                t, scheduler=schedule_local_reduce)
+                t, scheduler=schedule_local_reduce, scope='local')
 
         def cross_all_reduce(t):
             return _op_lib.kungfu_cross_all_reduce(t, op='sum')
 
         def local_broadcast(t):
             return _scheduled_local_nccl_broadcast(
-                t, scheduler=schedule_local_broadcast)
+                t, scheduler=schedule_local_broadcast, scope='local')
 
         t_names = list(sorted(names))
         with tf.control_dependencies([

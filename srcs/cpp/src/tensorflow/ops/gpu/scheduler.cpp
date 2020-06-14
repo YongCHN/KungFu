@@ -2,11 +2,6 @@
 
 namespace tensorflow
 {
-static const std::map<std::string, KungFu_NCCLScope> kungfu_nccl_scopes({
-    {"global", KungFu_NCCL_GLOBAL},
-    {"local", KungFu_NCCL_LOCAL},
-});
-
 REGISTER_KUNGFU_OP(StartNcclScheduler)
     .Attr("scheduler: string")
     .Attr("scope: string")
@@ -24,10 +19,10 @@ class StartNcclScheduler : public OpKernel
         OP_REQUIRES_OK(context, context->GetAttr("scheduler", &scheduler));
         std::string scope_name;
         OP_REQUIRES_OK(context, context->GetAttr("scope", &scope_name));
-        OP_REQUIRES(context, kungfu_nccl_scopes.count(scope_name) > 0,
+        OP_REQUIRES(context, kungfu::_nccl_scopes.count(scope_name) > 0,
                     errors::InvalidArgument("invalid scope"));
-        const auto scope = kungfu_nccl_scopes.at(scope_name);
-        scheduler_ = _default_nccl_helper->CreateScheduler(scheduler, scope);
+        const auto scope = kungfu::_nccl_scopes.at(scope_name);
+        scheduler_ = _default_nccl_helper->EnsureScheduler(scheduler, scope);
         _default_nccl_helper->EnsureController(scope);
     }
 

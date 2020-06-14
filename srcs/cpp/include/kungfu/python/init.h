@@ -1,6 +1,7 @@
 #pragma once
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -66,13 +67,13 @@ struct Workspace {
     const KungFu_Datatype dtype;
 };
 
-class nccl_controller
+class NCCLController
 {
     KungFu_NCCLScope scope_;
     std::unique_ptr<gpu_collective> _gpu_collective;
 
   public:
-    nccl_controller(const KungFu_NCCLScope scope);
+    NCCLController(const KungFu_NCCLScope scope);
 
     void InitOnce();
 
@@ -107,18 +108,19 @@ class NCCLScheduler
 // NCCLHelper is a singleton class that contains NCCL related global variables
 class NCCLHelper
 {
-    std::map<KungFu_NCCLScope, std::unique_ptr<nccl_controller>> controllers_;
+    std::mutex mu_;
+
+    std::map<KungFu_NCCLScope, std::unique_ptr<NCCLController>> controllers_;
     std::map<std::string, std::unique_ptr<NCCLScheduler>> schedulers_;
 
   public:
-    void EnsureController(const KungFu_NCCLScope scope);
+    NCCLController *EnsureController(const KungFu_NCCLScope scope);
 
-    nccl_controller *GetController(const KungFu_NCCLScope scope);
-
-    NCCLScheduler *CreateScheduler(const std::string &name,
+    NCCLScheduler *EnsureScheduler(const std::string &name,
                                    const KungFu_NCCLScope scope);
-    NCCLScheduler *GetScheduler(const std::string &name) const;
 };
+
+extern const std::map<std::string, KungFu_NCCLScope> _nccl_scopes;
 }  // namespace kungfu
 
 extern std::unique_ptr<kungfu::NCCLHelper> _default_nccl_helper;
